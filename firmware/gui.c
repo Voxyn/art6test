@@ -1451,11 +1451,23 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_CURVES:
 				// ToDo: Implement context.edit
 				context.list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
+				context.submenu = 1;
 				FOREACH_ROW(
 					char s[4] = "CV0";
 					s[2] = '1' + row;
 					lcd_write_string(s, context.op_list, FLAGS_NONE);
 				)
+				if( context.menu_mode == MENU_MODE_LIST )
+				{
+					if (g_key_press & KEY_OK) {
+						g_menu_return_page = context.page;
+						context.page = MOD_PAGE_CURVE_EDIT;
+						g_edit_item = context.list;
+						context.menu_mode = MENU_MODE_LIST;
+						context.list = 0;
+						context.list_top = 0;
+					}
+				}
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1522,7 +1534,27 @@ void gui_process(uint32_t data) {
 				break;
 			}
 			case MOD_PAGE_CURVE_EDIT:
-				// ToDo: Implement!
+				context.col_limit = 0;
+				uint8_t max_y = 10;
+				uint8_t min_y = 60;
+				lcd_draw_line(90,max_y,90,min_y,LCD_OP_SET);
+				uint8_t count = 65;
+
+				long scale = 2.0;
+				for(count = 65; count < 115; count+= 5) {
+					lcd_set_pixel(count,35,LCD_OP_SET);
+				}
+
+				int8_t w1 = -100;
+				lcd_set_pixel(65, gui_offset_curves(-100,100,max_y,min_y,w1),LCD_OP_SET);
+				int8_t w2 = -50;
+				lcd_set_pixel(77, gui_offset_curves(-100,100,max_y,min_y,w2),LCD_OP_SET);
+				int8_t w3 = 0;
+				lcd_set_pixel(90, gui_offset_curves(-100,100,max_y,min_y,w3),LCD_OP_SET);
+				int8_t w4 = 50;
+				lcd_set_pixel(107, gui_offset_curves(-100,100,max_y,min_y,w4),LCD_OP_SET);
+				int8_t w5 = 100;
+				lcd_set_pixel(115, gui_offset_curves(-100,100,max_y,min_y,w5),LCD_OP_SET);
 				break;
 
 			}
@@ -2044,4 +2076,9 @@ static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 		ret = min;
 
 	return ret;
+}
+
+uint8_t gui_offset_curves(int8_t max, int8_t min, int8_t a, int8_t b, int8_t x) {
+	long coord = (((b-a)*(x-min))/(max-min))+a;
+	return (int8_t) coord;
 }
