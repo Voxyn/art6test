@@ -98,6 +98,7 @@ typedef struct {
 	int8_t inc :2; // -1,0,1
 	LCD_OP op_list :2; // opacity of text currently being printed in a row (used mainly for row heading)
 	LCD_OP op_item :2; // opacity of text of item currently being printed
+	uint8_t submenu; // submenu indicator for mixer and curve selection
 } MenuContext;
 
 //static MenuContext g_menuContext = {0};
@@ -197,6 +198,7 @@ static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint
 	if (row == pCtx->list) {
 		switch (pCtx->menu_mode) {
 		case MENU_MODE_LIST:
+		case MENU_MODE_LIST_SUB:
 			pCtx->op_list = LCD_OP_CLR;
 			break;
 		case MENU_MODE_COL:
@@ -602,7 +604,7 @@ void gui_process(uint32_t data) {
 					context.list = 0;
 					context.list_top = 0;
 				}
-			} else if (context.menu_mode == MENU_MODE_LIST) {
+			} else if (context.menu_mode == MENU_MODE_LIST || context.menu_mode == MENU_MODE_LIST_SUB) {
 				if (context.list > 0) {
 					context.list--;
 				}
@@ -619,7 +621,7 @@ void gui_process(uint32_t data) {
 					context.list = 0;
 					context.list_top = 0;
 				}
-			} else if (context.menu_mode == MENU_MODE_LIST) {
+			} else if (context.menu_mode == MENU_MODE_LIST || context.menu_mode == MENU_MODE_LIST_SUB) {
 				if (context.list < context.list_limit) {
 					context.list++;
 				}
@@ -632,8 +634,13 @@ void gui_process(uint32_t data) {
 		} else if (g_key_press & (KEY_SEL | KEY_OK)) {
 			switch (context.menu_mode) {
 			case MENU_MODE_PAGE:
-				context.menu_mode = MENU_MODE_LIST;
-				g_menu_mode_dir = 1;
+				if(context.submenu == 0) {
+					context.menu_mode = MENU_MODE_LIST;
+					g_menu_mode_dir = 1;
+				}
+				else {
+					context.menu_mode = MENU_MODE_LIST_SUB;
+				}
 				break;
 			case MENU_MODE_LIST:
 				if (context.col_limit == 0)
@@ -651,6 +658,9 @@ void gui_process(uint32_t data) {
 				else
 					context.menu_mode = MENU_MODE_COL;
 				break;
+			case MENU_MODE_LIST_SUB:
+				context.menu_mode = MENU_MODE_LIST;
+				break;
 			default:
 				break;
 			}
@@ -660,10 +670,15 @@ void gui_process(uint32_t data) {
 				g_menu_return_page = 0;
 			} else {
 				if (context.menu_mode > 0) {
-					context.menu_mode--;
-					if (context.col_limit == 0
-							&& context.menu_mode == MENU_MODE_COL) {
+					if(context.menu_mode == MENU_MODE_LIST_SUB) {
 						context.menu_mode = MENU_MODE_LIST;
+					}
+					else {
+						context.menu_mode--;
+						if (context.col_limit == 0
+								&& context.menu_mode == MENU_MODE_COL) {
+							context.menu_mode = MENU_MODE_LIST;
+						}
 					}
 				} else {
 					context.page = 0;
@@ -1300,6 +1315,7 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_MIXER: {
 				context.list_limit = MAX_MIXERS-1;
 				context.col_limit = 0;
+				context.submenu = 1;
 				FOREACH_ROW(
 					const MixData* const mx = &g_model.mixData[row];
 					if((mx->destCh==0) || (mx->destCh>NUM_CHNOUT))
